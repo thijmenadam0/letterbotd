@@ -8,8 +8,9 @@ import os
 import discord
 from discord import Intents, Client, Message
 from discord.ext import commands
-from responses import get_response
 from letterboxdpy import user
+from letterboxdpy.movie import Movie
+
 
 
 # LOAD TOKEN
@@ -28,24 +29,38 @@ async def user_info(ctx, arg):
     user_instance = user.User(arg)
     username = getattr(user_instance, 'username')
 
-    userbio = "This user has no bio"
+    userbio = f'this user does not have a bio'
     if hasattr(user_instance, 'bio'):
         userbio = getattr(user_instance, 'bio')
     userfaves = getattr(user_instance, 'favorites')
     usericon = getattr(user_instance, 'avatar')
 
+    diary = user.user_diary(user_instance)
+
+    recent = list(diary['entrys'].keys())[0]
+    recent_film_slug = str(diary['entrys'][recent]['slug'])
+
+    movie_instance = Movie(recent_film_slug)
+    movie_name = getattr(movie_instance, 'title')
+    movie_poster = getattr(movie_instance, 'poster')
+    movie_year = getattr(movie_instance, 'year')
+
     fave_list = []
     for item in userfaves.items():
-        fave_list.append(item[1]['name'])
-    
+        fave_instance = Movie(str(item[1]['slug']))
+        fave_year = getattr(fave_instance, 'year')
+        fave_list.append(f'{item[1]['name']} *({fave_year})*')
+
     if fave_list == []:
         fave_list = ["This user has no favorite films"]
 
-    embedVar = discord.Embed(title=f'Letterboxd user: {username}', description=f'bio: {userbio}', color=0x00ff00)
+    embedVar = discord.Embed(title=f'{username}', description=userbio, color=0x00ff00)
     embedVar.set_thumbnail(url = usericon['url'])
 
-    embedVar.add_field(name="This users favorite films are:", value='\n'.join(fave_list), inline=False)
-    embedVar.add_field(name="Field2", value="hi2", inline=False)
+    embedVar.add_field(name=f'{username}\'s favorite films are:', value='\n'.join(fave_list), inline=False)
+
+    embedVar.add_field(name=f'**Most recently watched:**', value=f'{movie_name} *({movie_year})*', inline=False)
+    embedVar.set_image(url = movie_poster) 
 
     await ctx.send(embed = embedVar)
 
