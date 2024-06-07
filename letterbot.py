@@ -7,11 +7,9 @@ import requests
 import os
 import discord
 from discord import Intents, Client, Message
-from discord.ext import commands
+from discord.ext import tasks, commands
 from letterboxdpy import user
 from letterboxdpy.movie import Movie
-
-
 
 # LOAD TOKEN
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -20,12 +18,53 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 intents = Intents.default()
 intents.message_content = True
 client = Client(intents=intents)
+channelID = 1247541112445472852
 
-bot = commands.Bot(command_prefix='!', intents=intents)
+class MyBot(commands.Bot):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user_logged = {}
 
+bot = MyBot(command_prefix='!', intents=intents)
+
+@bot.event
+async def on_ready():
+    with open("users.txt", "r") as file:
+        for username in file.readlines():
+            username = username[:-1]
+            user_instance = user.User(username)
+            diary = user.user_diary(user_instance)
+            logged = len(diary['entrys'].keys())
+            bot.user_logged[username] = logged
+    
+    film_refresh.start()
+
+@bot.command()
+async def add_user(ctx, arg):
+    ''''''
+
+    user_instance = user.User(arg)
+    diary = user.user_diary(user_instance)
+    logged = len(diary['entrys'].keys())
+    try:
+        user.User(arg)
+        user_exists = True
+    except:
+        user_exists = False
+
+    if user_exists:
+        username = arg.lower()
+        print(username)
+        with open("users.txt", "a") as infile:
+            infile.write(username + "\n")
+        await ctx.send(f'{arg} will now be added to the list of letterboxd users!')
+        bot.user_logged[username] = logged
+    else:
+        await ctx.send(f'{arg}\'s account does not exist on letterboxd.')
 
 @bot.command()
 async def user_info(ctx, arg):
+    ''''''
     user_instance = user.User(arg)
     username = getattr(user_instance, 'username')
 
@@ -64,46 +103,51 @@ async def user_info(ctx, arg):
 
     await ctx.send(embed = embedVar)
 
-# MESSAGE FUNCTIONALITY
-# async def send_message(message, user_message) -> None:
-#     if not user_message:
-#         print("Message was empty because intents were not enabled")
-#         return
-#     
-#     try:
-#         response = get_response(user_message)
-#         await message.channel.send(response)
-#     except Exception as e:
-#         print(e)
+async def film_info(ctx, ui):
+    ''''''
+    usericon = getattr(ui, 'avatar')
+    username = getattr(ui, 'username')
 
-# HANDLE STARTUP FOR BOT
-# @client.event
-# async def on_ready() -> None:
-#     print("f'{client.user} is now running")
-
-
-# @client.event
-# async def on_message(message) -> None:
-#     if message.author == client.user:
-#         return
+    diary = user.user_diary(ui)
+    logged = len(diary['entrys'].keys())
     
-#     username = str(message.author)
-#     user_message = message.content
-#     channel = str(message.channel)
+    if logged > bot.user_logged[username]:
+        recent = list(diary['entrys'].keys())[0]
+        recent_film_slug = str(diary['entrys'][recent]['slug'])
 
-#     print(f'[{channel}], {username}: "{user_message}"')
-#     await send_message(message, user_message)
+        movie_instance = Movie(recent_film_slug)
+        movie_name = getattr(movie_instance, 'title')
+        movie_poster = getattr(movie_instance, 'poster')
+        movie_year = getattr(movie_instance, 'year')
+
+        embedVar = discord.Embed(title=f'{'thijmenadam'}', color=0x00ff00)
+        embedVar.set_thumbnail(url = usericon['url'])
+
+        rating = diary['entrys'][recent]['actions']['rating'] / 2
+
+        embedVar.add_field(name=f'**JUST WATCHED**', value=f'{movie_name} *({movie_year})*', inline=False)
+
+        if rating.is_integer():
+            print(rating)
+            embedVar.add_field(name="Rating: ", value=f'{int(rating)}/5')
+        else:
+            embedVar.add_field(name="Rating: ", value=f'{float(rating)}/5')
+        embedVar.set_image(url = movie_poster) 
+
+        await ctx.send(embed = embedVar)
+        bot.user_logged[username] = logged
+
+@tasks.loop(seconds=60)
+async def film_refresh():
+    ctx = bot.get_channel(int(channelID))
+    for username in bot.user_logged.keys():
+        user_instance = user.User(username)
+        await film_info(ctx, user_instance)
+
 
 def main() -> None:
     bot.run(token="MTI0NzUzOTQwODMxMjMzNjQyNQ.GRY2dF.Tje2QwjZYgTxKDnS1vfIx-XByLB8UKrKrpW8Xo")
 
-    #thijmen = user.User("thijmenadam")
-    #print(user.user_diary(thijmen))
-
-    #print("Movie: ", user.user_diary(thijmen)[0]['movie'])
-    #print("Watched on: ", user.user_diary(thijmen)[0]['date'])
-    #print("Rating: ", user.user_diary(thijmen)[0]['rating'])
-    #print("Review: ", user.user_reviews(thijmen)[0]['review'])
     
 
 if __name__ == "__main__":
