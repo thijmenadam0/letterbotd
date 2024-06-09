@@ -4,6 +4,7 @@
 #
 
 import requests
+from dotenv import load_dotenv
 import os
 import discord
 from discord import Intents, Client, Message, app_commands
@@ -12,7 +13,8 @@ from letterboxdpy import user
 from letterboxdpy.movie import Movie
 
 # LOAD TOKEN
-TOKEN = os.getenv('DISCORD_TOKEN')
+load_dotenv()
+TOKEN = os.getenv("DISCORD_TOKEN")
 
 # SET UP BOT
 intents = Intents.default()
@@ -96,7 +98,7 @@ async def film_refresh():
 
 
 def main() -> None:
-    bot.run(token="MTI0NzUzOTQwODMxMjMzNjQyNQ.GRY2dF.Tje2QwjZYgTxKDnS1vfIx-XByLB8UKrKrpW8Xo")
+    bot.run(token=TOKEN)
 
     
 
