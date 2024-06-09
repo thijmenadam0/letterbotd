@@ -1,0 +1,7 @@
+beautifulsoup4
+lxml
+requests
+git+https://github.com/nmcassa/letterboxdpy.git
+discord.py
+dotenv
+utils
