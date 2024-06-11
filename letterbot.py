@@ -11,6 +11,7 @@ from discord import Intents, Client, Message, app_commands
 from discord.ext import tasks, commands
 from letterboxdpy import user
 from letterboxdpy.movie import Movie
+import random
 
 # LOAD TOKEN
 load_dotenv()
@@ -20,7 +21,6 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 intents = Intents.default()
 intents.message_content = True
 client = Client(intents=intents)
-channelID = 1247541112445472852
 
 class MyBot(commands.Bot):
     def __init__(self, **kwargs):
@@ -39,6 +39,14 @@ bot = MyBot(command_prefix='!', intents=intents)
 
 @bot.event
 async def on_ready():
+    if os.path.exists("channel.txt"):
+        with open("channel.txt", "r") as inf:
+            global channelID 
+            channelID = inf.read().rstrip()
+            film_refresh.start()
+    else:
+        check_initiate.start()
+
     with open("users.txt", "r") as file:
         for username in file.readlines():
             username = username.strip()
@@ -51,8 +59,6 @@ async def on_ready():
                 print(f"Failed to load user '{username}': {e}")
 
     await bot.tree.sync()
-    film_refresh.start()
-
 
 async def film_info(ctx, ui):
     ''''''
@@ -71,7 +77,10 @@ async def film_info(ctx, ui):
         movie_poster = getattr(movie_instance, 'poster')
         movie_year = getattr(movie_instance, 'year')
 
-        embedVar = discord.Embed(title=f'{username}', color=0x00ff00)
+        colors = [(255,128,0), (0,224,84), (64,188,244)]
+        color_set = random.choice(colors)
+
+        embedVar = discord.Embed(title=f'{username}', color=discord.Color.from_rgb(color_set[0], color_set[1], color_set[2]))
         embedVar.set_thumbnail(url = usericon['url'])
 
         rating = diary['entrys'][recent]['actions']['rating'] / 2
@@ -89,12 +98,25 @@ async def film_info(ctx, ui):
         bot.user_logged[username] = logged
 
 
-@tasks.loop(seconds=60)
+@tasks.loop(seconds=600)
 async def film_refresh():
     ctx = bot.get_channel(int(channelID))
     for username in bot.user_logged.keys():
         user_instance = user.User(username)
         await film_info(ctx, user_instance)
+
+@tasks.loop(seconds=60)
+async def check_initiate():
+    if os.path.exists("channel.txt"):
+        with open("channel.txt", "r") as inf:
+            global channelID 
+            channelID = inf.read().rstrip()
+            film_refresh.start()
+            check_initiate.cancel()
+    else:
+        return
+
+
 
 
 def main() -> None:
