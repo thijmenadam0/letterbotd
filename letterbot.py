@@ -88,7 +88,6 @@ async def film_info(ctx, ui):
         embedVar.add_field(name=f'**JUST WATCHED**', value=f'{movie_name} *({movie_year})*', inline=False)
 
         if rating.is_integer():
-            print(rating)
             embedVar.add_field(name="Rating: ", value=f'{int(rating)}/5')
         else:
             embedVar.add_field(name="Rating: ", value=f'{float(rating)}/5')
